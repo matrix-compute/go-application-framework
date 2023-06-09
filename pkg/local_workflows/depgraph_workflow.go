@@ -75,6 +75,27 @@ var (
 			},
 		},
 	}
+
+	ContainerDepGraph = &containerDepGraphWorkflow{
+		Workflow: &workflow.Workflow{
+			Name:     "container depgraph",
+			Visible:  false,
+			TypeName: "depgraph",
+			Flags: ContainerDepGraphFlags{
+				genericDepGraphFlags: genericFlags,
+				AppVulns: workflow.Flag[bool]{
+					Name:         "app-vulns",
+					Usage:        "enable app-vulns (deprecated, as this is the default value)",
+					DefaultValue: false,
+				},
+				ExcludeAppVulns: workflow.Flag[bool]{
+					Name:         "exclude-app-vulns",
+					Usage:        "disable app-vulns",
+					DefaultValue: false,
+				},
+			},
+		},
+	}
 )
 
 // InitDepGraphWorkflow initializes the depgraph workflow
@@ -91,6 +112,14 @@ type osDepGraphWorkflow struct {
 
 func (o osDepGraphWorkflow) Flags() OpenSourceDepGraphFlags {
 	return o.Workflow.Flags.(OpenSourceDepGraphFlags)
+}
+
+type containerDepGraphWorkflow struct {
+	*workflow.Workflow
+}
+
+func (c containerDepGraphWorkflow) Flags() ContainerDepGraphFlags {
+	return c.Workflow.Flags.(ContainerDepGraphFlags)
 }
 
 type genericDepGraphFlags struct {
@@ -131,6 +160,28 @@ func (o OpenSourceDepGraphFlags) GetFlags() workflow.Flags {
 func (o *osDepGraphWorkflow) Entrypoint(invocation workflow.InvocationContext, input []workflow.Data) ([]workflow.Data, error) {
 	return depGraphEntrypoint(
 		o, []string{"test", "--print-graph", "--json"},
+		invocation, input,
+	)
+}
+
+type ContainerDepGraphFlags struct {
+	genericDepGraphFlags
+
+	AppVulns        workflow.Flag[bool]
+	ExcludeAppVulns workflow.Flag[bool]
+}
+
+func (c ContainerDepGraphFlags) GetFlags() workflow.Flags {
+	return append(
+		c.genericDepGraphFlags.GetFlags(),
+		c.AppVulns,
+		c.ExcludeAppVulns,
+	)
+}
+
+func (c *containerDepGraphWorkflow) Entrypoint(invocation workflow.InvocationContext, input []workflow.Data) ([]workflow.Data, error) {
+	return depGraphEntrypoint(
+		c, []string{"container", "test", "--print-graph", "--json"},
 		invocation, input,
 	)
 }
