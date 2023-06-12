@@ -261,9 +261,11 @@ func depGraphEntrypoint(
 // The `(?s)` at the beginning enables multiline-matching.
 var depGraphSeparator = regexp.MustCompile(`(?s)DepGraph data:(.*?)DepGraph target:(.*?)DepGraph end`)
 
+const depGraphContentType = "application/json"
+
 func extractDepGraphsFromCLIOutput(output []byte) ([]workflow.Data, error) {
 	if len(output) == 0 {
-		return nil, fmt.Errorf("no dependency graphs found")
+		return nil, noDependencyGraphsError{output}
 	}
 
 	var depGraphs []workflow.Data
@@ -272,10 +274,18 @@ func extractDepGraphsFromCLIOutput(output []byte) ([]workflow.Data, error) {
 			return nil, fmt.Errorf("malformed CLI output, got %v matches", len(match))
 		}
 
-		data := workflow.NewData(DATATYPEID_DEPGRAPH, "application/json", match[1])
+		data := workflow.NewData(DATATYPEID_DEPGRAPH, depGraphContentType, match[1])
 		data.SetMetaData("Content-Location", strings.TrimSpace(string(match[2])))
 		depGraphs = append(depGraphs, data)
 	}
 
 	return depGraphs, nil
+}
+
+type noDependencyGraphsError struct {
+	output []byte
+}
+
+func (n noDependencyGraphsError) Error() string {
+	return fmt.Sprintf("no dependency graphs found in output: %s", n.output)
 }
