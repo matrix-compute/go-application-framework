@@ -8,10 +8,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/go-application-framework/pkg/workflow"
+
 	"github.com/golang/mock/gomock"
+
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/mocks"
 )
@@ -33,7 +35,7 @@ func Test_ReportAnalytics_ReportAnalyticsEntryPoint_shouldReportToApi(t *testing
 	invocationContextMock := mocks.NewMockInvocationContext(ctrl)
 	require.NoError(t, testInitReportAnalyticsWorkflow(ctrl))
 
-	mockClient := testGetMockHTTPClient(t, orgId, requestPayload)
+	mockClient := testGetRequestAnalyticsMockHTTPClient(t, orgId, requestPayload)
 
 	// invocation context mocks
 	invocationContextMock.EXPECT().GetConfiguration().Return(config).AnyTimes()
@@ -153,7 +155,7 @@ func Test_ReportAnalytics_ReportAnalyticsEntryPoint_usesCLIInput(t *testing.T) {
 	networkAccessMock := mocks.NewMockNetworkAccess(ctrl)
 	invocationContextMock := mocks.NewMockInvocationContext(ctrl)
 	require.NoError(t, testInitReportAnalyticsWorkflow(ctrl))
-	mockClient := testGetMockHTTPClient(t, orgId, requestPayload)
+	mockClient := testGetRequestAnalyticsMockHTTPClient(t, orgId, requestPayload)
 
 	// invocation context mocks
 	invocationContextMock.EXPECT().GetConfiguration().Return(config).AnyTimes()
@@ -232,7 +234,7 @@ func testInitReportAnalyticsWorkflow(ctrl *gomock.Controller) error {
 	return InitReportAnalyticsWorkflow(engine)
 }
 
-func testGetMockHTTPClient(t *testing.T, orgId string, requestPayload string) *http.Client {
+func testGetRequestAnalyticsMockHTTPClient(t *testing.T, orgId string, requestPayload string) *http.Client {
 	mockClient := newTestClient(func(req *http.Request) *http.Response {
 		// Test request parameters
 		require.Equal(t, "/rest/api/orgs/"+orgId+"/analytics", req.URL.String())

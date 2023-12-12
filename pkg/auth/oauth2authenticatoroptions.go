@@ -32,3 +32,9 @@ func WithHttpClient(httpClient *http.Client) OAuth2AuthenticatorOption {
 		authenticator.httpClient = httpClient
 	}
 }
+
+func WithClientId(clientId string) OAuth2AuthenticatorOption {
+	return func(authenticator *oAuth2Authenticator) {
+		authenticator.oauthConfig.ClientID = clientId
+	}
+}

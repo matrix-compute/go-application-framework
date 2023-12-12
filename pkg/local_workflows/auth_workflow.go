@@ -1,21 +1,25 @@
 package localworkflows
 
 import (
+	"context"
 	"fmt"
 	"os"
+
+	"github.com/spf13/pflag"
 
 	"github.com/snyk/go-application-framework/pkg/auth"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
-	"github.com/spf13/pflag"
 )
 
 const (
-	workflowNameAuth  = "auth"
-	headlessFlag      = "headless"
-	authTypeParameter = "auth-type"
-	authTypeOAuth     = "oauth"
-	authTypeToken     = "token"
+	workflowNameAuth     = "auth"
+	headlessFlag         = "headless"
+	authTypeParameter    = "auth-type"
+	authTypeOAuth        = "oauth"
+	authTypeToken        = "token"
+	authClientIdFlag     = "client-id"
+	authClientSecretFlag = "client-secret"
 )
 
 var authTypeDescription = fmt.Sprint("Authentication type (", authTypeToken, ", ", authTypeOAuth, ")")
@@ -34,9 +38,6 @@ var WORKFLOWID_AUTH workflow.Identifier = workflow.NewWorkflowIdentifier(workflo
 
 // InitAuth initialises the auth workflow before registering it with the engine.
 func InitAuth(engine workflow.Engine) error {
-	if !engine.GetConfiguration().GetBool(configuration.FF_OAUTH_AUTH_FLOW_ENABLED) {
-		return nil // Use legacy CLI for authentication for now, until OAuth is ready
-	}
 	config := pflag.NewFlagSet(workflowNameAuth, pflag.ExitOnError)
 	config.String(authTypeParameter, "", authTypeDescription)
 	config.Bool(headlessFlag, false, "Enable headless OAuth authentication")
@@ -75,13 +76,29 @@ func authEntryPoint(invocationCtx workflow.InvocationContext, _ []workflow.Data)
 		headless := config.GetBool(headlessFlag)
 		logger.Println("Headless:", headless)
 
+		openBrowserFunc, ok := config.Get("openBrowserFunc").(func(string))
+		if !ok {
+			openBrowserFunc = OpenBrowser
+		}
+
 		httpClient := invocationCtx.GetNetworkAccess().GetUnauthorizedHttpClient()
-		authenticator := auth.NewOAuth2AuthenticatorWithOpts(
-			config,
+
+		opts := []auth.OAuth2AuthenticatorOption{
 			auth.WithHttpClient(httpClient),
-			auth.WithOpenBrowserFunc(OpenBrowser),
-			auth.WithShutdownServerFunc(auth.ShutdownServer),
-		)
+			auth.WithOpenBrowserFunc(openBrowserFunc),
+			auth.WithShutdownServerFunc(auth.ShutdownServer)}
+
+		clientId := config.GetString(authClientIdFlag)
+		clientSecret := config.GetString(authClientSecretFlag)
+		useClientCreds := clientId != "" && clientSecret != ""
+
+		authenticator := auth.NewOAuth2AuthenticatorWithOpts(config, opts...)
+
+		if useClientCreds {
+			err = authenticator.GetTokenWithCreds(context.Background())
+			return nil, err
+		}
+
 		err = authenticator.Authenticate()
 		if err != nil {
 			return nil, err

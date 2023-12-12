@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/snyk/go-application-framework/internal/api"
@@ -17,6 +18,12 @@ type Authenticator interface {
 	// IsSupported returns true if the authenticator is ready for use.
 	// If false is returned, it is not possible to add authentication headers/env vars.
 	IsSupported() bool
+}
+
+type ClientCredentialsAuthenticator interface {
+	Authenticator
+	// GetTokenWithCreds gets a token using the given client id and secret.
+	GetTokenWithCreds(ctx context.Context) error
 }
 
 func CreateAuthenticator(config configuration.Configuration, httpClient *http.Client) Authenticator {

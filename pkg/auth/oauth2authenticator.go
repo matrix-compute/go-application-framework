@@ -18,6 +18,7 @@ import (
 
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
 )
@@ -143,7 +144,7 @@ func NewOAuth2Authenticator(config configuration.Configuration, httpClient *http
 	return NewOAuth2AuthenticatorWithOpts(config, WithHttpClient(httpClient))
 }
 
-func NewOAuth2AuthenticatorWithOpts(config configuration.Configuration, opts ...OAuth2AuthenticatorOption) Authenticator {
+func NewOAuth2AuthenticatorWithOpts(config configuration.Configuration, opts ...OAuth2AuthenticatorOption) ClientCredentialsAuthenticator {
 	o := &oAuth2Authenticator{}
 	o.config = config
 	o.token, _ = GetOAuthToken(config)
@@ -251,7 +252,7 @@ func (o *oAuth2Authenticator) Authenticate() error {
 			o.shutdownServerFunc(srv)
 		})
 		err = srv.Serve(listener)
-		if err == http.ErrServerClosed { // if the server was shutdown normally, there is no need to iterate further
+		if errors.Is(err, http.ErrServerClosed) { // if the server was shutdown normally, there is no need to iterate further
 			if timedOut {
 				return errors.New("authentication failed (timeout)")
 			}
@@ -327,4 +328,15 @@ func (o *oAuth2Authenticator) AddAuthenticationHeader(request *http.Request) err
 	}
 
 	return nil
+}
+
+func (o *oAuth2Authenticator) GetTokenWithCreds(ctx context.Context) error {
+	config := clientcredentials.Config{
+		ClientID:       o.oauthConfig.ClientID,
+		ClientSecret:   o.oauthConfig.ClientSecret,
+		TokenURL:       o.oauthConfig.Endpoint.TokenURL,
+		Scopes:         ,
+		EndpointParams: nil,
+		AuthStyle:      0,
+	}
 }
